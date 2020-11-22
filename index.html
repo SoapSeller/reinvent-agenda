@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://unpkg.com/vue"></script>
+    <script src="https://cdn.jsdelivr.net/npm/underscore@1.11.0/underscore-min.js "></script>
+    
     <title>re:invent calendar</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
     <style>
@@ -17,16 +19,20 @@
 
 <body>
     <div id="app" class="container-fluid">
-        <!-- <h3>Filter:</h3>
+        <h3>Filter:</h3>
         <div class="form-check">
-            <input class="form-check-input" type="checkbox" value="" v-bind:value="onlyFav" id="onlyFav">
+            <input class="form-check-input" type="checkbox" value="" v-model="onlyFav" id="onlyFav">
             <label class="form-check-label" for="onlyFav">
               Only Favorite
             </label>
-        </div> -->
+        </div>
+        <h5>Tags:</h5>
+        <div class="form-group">
+            <label for="tagSearch">Search</label>
+            <input type="email" class="form-control" id="tagSearch" v-model="tagSearch" placeholder="tag">
+        </div>
         <h3>Days:</h3>
         <ul class="list-unstyled" v-for="(value, name) in events">
-            
             <li><a v-bind:href="'#' + name">{{name}}</a></li>
         </ul>
 
@@ -46,8 +52,10 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr v-for="event in value">
-                    <th scope="row"><a v-on:click="toggleFav(event)">{{event.favorite ? "☑" : "☐"}}</a></th>
+                <tr v-for="(event, index) in value">
+                    <th scope="row">
+                        <favorite :event="event"></favorite>
+                    </th>
                     <td><a v-bind:href="event.url">{{event.title}}</a></td>
                     <td v-html="event.content"></td>
                     <td>{{event.tags}}</td>
@@ -75,11 +83,16 @@
         }
 
         let eventsData = {};
-        //agenda = [agenda[0], agenda[1]];
+        let tagsSet = new Set();
+        
         agenda.forEach(event => {
             var start = new Date(event.schedulingData.start.timestamp * 1000);
             var end = new Date(event.schedulingData.end.timestamp * 1000);
             var day = start.getDate() + "/" + start.getMonth();
+            let tagsSplt = event.tags.split(",");
+            tagsSplt.forEach(tag => {
+                tagsSet.add(tag);
+            });
             let eventData = {
                 id: event.id,
                 start: dateToTime(start),
@@ -87,7 +100,6 @@
                 title: event.name,
                 content: event.description,
                 tags: event.tags,
-                favorite: localStorage.getItem(event.id) == "true",
                 url: "https://virtual.awsevents.com/media/" + event.id,
             };
             if (eventsData[day] === undefined) {
@@ -96,18 +108,56 @@
             eventsData[day].push(eventData);
         });
 
+        let tags = [];
+        tagsSet.forEach(tag => {
+            tags.push(tag);
+        });
+
+        function appendFilter(a, b) {
+            return (event) => a(event) && b(event);
+        }
+
+        function isFavorite(event) {
+            return localStorage.getItem(event.id) == "true";
+        }
 
         let app = new Vue({
             el: '#app',
             data: {
-                events: eventsData,
-                onlyFav: false
+                allEvents: eventsData,
+                onlyFav: false,
+                tags: tags,
+                tagSearch: ""
             },
-            methods: {
-                toggleFav: (event) => {
-                    const fav = !event.favorite;
-                    localStorage.setItem(event.id, fav ? "true" : "false");
-                    event.favorite = fav;
+            computed: {
+                events() {
+                    let eventFilter = (event) => true;
+                    if (this.onlyFav) {
+                        eventFilter = appendFilter(eventFilter, event => isFavorite(event));
+                    }
+                    if (this.tagSearch != "") {
+                        eventFilter = appendFilter(eventFilter, event => event.tags.includes(this.tagSearch));
+                    }
+                    let mappedEvents = _.map(eventsData, (eventsDay, key, list) => {
+                        return _.filter(eventsDay, eventFilter);
+                    });
+                    return _.filter(mappedEvents, eventsDay => eventsDay.length != 0);
+                }
+            },
+            components: {
+                favorite: {
+                    props: ['event'],
+                    template: '<div class="form-check"><input class="form-check-input" type="checkbox" value="" v-model="fav"></div>',
+                    computed: {
+                        fav: {
+                            get() {
+                                return isFavorite(this.event);
+                            },
+                            set: function(newValue) {
+                                localStorage.setItem(this.event.id, newValue ? "true" : "false");
+                            }
+                        }
+                    }
                 }
             }
             
