@@ -19,6 +19,7 @@
 
 <body>
     <div id="app" class="container-fluid">
+        <h3><a href="#" v-on:click="downloadFavorites">Download Favorites</a></h3>
         <h3>Filter:</h3>
         <div class="form-check">
             <input class="form-check-input" type="checkbox" value="" v-model="onlyFav" id="onlyFav">
@@ -31,14 +32,14 @@
             <label for="tagSearch">Search</label>
             <input type="email" class="form-control" id="tagSearch" v-model="tagSearch" placeholder="tag">
         </div>
-        <h3>Days: <div v-for="(value, name) in events" style="display:inline;"><a  v-bind:href="'#' + name">{{name}}</a>&nbsp;&nbsp;</div></h3>
+        <h3>Days: <div v-for="day in events" style="display:inline;"><a  v-bind:href="'#' + day.day">{{day.day}}</a>&nbsp;&nbsp;</div></h3>
 
         <h3>Full Agenda</h3>
-        <div v-for="(value, name) in events">
+        <div v-for="day in events">
 
             <div class="row justify-content-between">
                 <div class="col col-lg-2">
-                    <a v-bind:id="name"><h5>{{name}}</h5></a>
+                    <a v-bind:id="day.day"><h5>{{day.day}}</h5></a>
                 </div>
                 <div class="col col-lg-2 text-right">
                     <a href="#">Top</a>
@@ -56,7 +57,7 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr v-for="(event, index) in value">
+                <tr v-for="(event, index) in day.events">
                     <th scope="row">
                         <favorite :event="event"></favorite>
                     </th>
@@ -86,13 +87,13 @@
             return pad00(hour) + ":" + pad00(min);
         }
 
-        let eventsData = {};
+        let eventsDataObj = {};
         let tagsSet = new Set();
         
         agenda.forEach(event => {
             var start = new Date(event.schedulingData.start.timestamp * 1000);
             var end = new Date(event.schedulingData.end.timestamp * 1000);
-            var day = start.getDate() + "/" + start.getMonth();
+            var day = start.getDate() + "/" + (start.getMonth() + 1);
             let tagsSplt = event.tags.split(",");
             tagsSplt.forEach(tag => {
                 tagsSet.add(tag);
@@ -106,11 +107,25 @@
                 tags: event.tags,
                 url: "https://virtual.awsevents.com/media/" + event.id,
             };
-            if (eventsData[day] === undefined) {
-                eventsData[day] = [];
+            if (eventsDataObj[day] === undefined) {
+                eventsDataObj[day] = [];
             }
-            eventsData[day].push(eventData);
+            eventsDataObj[day].push(eventData);
         });
+        agenda = [];
+        delete agenda;
+        
+        eventsData = [];
+        Object.keys(eventsDataObj).forEach(key => {
+            eventsData.push({
+                day: key,
+                events: eventsDataObj[key]
+            });
+        });
+
+        eventsDataObj = {};
+        delete eventsDataObj;
+
 
         let tags = [];
         tagsSet.forEach(tag => {
@@ -125,6 +140,19 @@
             return localStorage.getItem(event.id) == "true";
         }
 
+        function download(filename, text) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        }
+
         let app = new Vue({
             el: '#app',
             data: {
@@ -132,6 +160,24 @@
                 onlyFav: false,
                 tags: tags,
                 tagSearch: ""
+            },
+            methods: {
+                downloadFavorites: () => {
+                    const origFav = app.onlyFav;
+                    app.onlyFav = true;
+                    let eventsStr = "DATE, TITLE, START, END, ID, URL\n";
+                    
+                    app.events.forEach(eventsDay => {
+                        eventsDay.events.forEach(event => {
+                            eventsStr += [eventsDay.day + "/2020", event.title, event.start, event.end, event.id, event.url].join() + "\n";
+                        });
+                    });
+
+                    app.onlyFav = origFav;
+                    download("reinvent_favorites.csv", eventsStr);
+
+                    
+                }
             },
             computed: {
                 events() {
@@ -142,10 +188,13 @@
                     if (this.tagSearch != "") {
                         eventFilter = appendFilter(eventFilter, event => event.tags.includes(this.tagSearch));
                     }
-                    let mappedEvents = _.map(eventsData, (eventsDay, key, list) => {
-                        return _.filter(eventsDay, eventFilter);
+                    let mappedEvents = _.map(eventsData, (eventsDay, idx, list) => {
+                        return {
+                            day: eventsDay.day,
+                            events: _.filter(eventsDay.events, eventFilter)
+                        };
                     });
-                    return _.filter(mappedEvents, eventsDay => eventsDay.length != 0);
+                    return _.filter(mappedEvents, eventsDay => eventsDay.events.length != 0);
                 }
             },
             components: {
