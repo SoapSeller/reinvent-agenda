@@ -47,7 +47,7 @@
                 </thead>
                 <tbody>
                 <tr v-for="event in value">
-                    <th scope="row"><a v-on:click="toggleFav(event)">{{event.favorite ? "☑" : "☒"}}</a></th>
+                    <th scope="row"><a v-on:click="toggleFav(event)">{{event.favorite ? "☑" : "☐"}}</a></th>
                     <td><a v-bind:href="event.url">{{event.title}}</a></td>
                     <td v-html="event.content"></td>
                     <td>{{event.tags}}</td>
