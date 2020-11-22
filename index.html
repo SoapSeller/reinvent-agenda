@@ -31,15 +31,19 @@
             <label for="tagSearch">Search</label>
             <input type="email" class="form-control" id="tagSearch" v-model="tagSearch" placeholder="tag">
         </div>
-        <h3>Days:</h3>
-        <ul class="list-unstyled" v-for="(value, name) in events">
-            <li><a v-bind:href="'#' + name">{{name}}</a></li>
-        </ul>
+        <h3>Days: <div v-for="(value, name) in events" style="display:inline;"><a  v-bind:href="'#' + name">{{name}}</a>&nbsp;&nbsp;</div></h3>
 
         <h3>Full Agenda</h3>
         <div v-for="(value, name) in events">
 
-            <a v-bind:id="name"><h5>{{name}}</h5></a>
+            <div class="row justify-content-between">
+                <div class="col col-lg-2">
+                    <a v-bind:id="name"><h5>{{name}}</h5></a>
+                </div>
+                <div class="col col-lg-2 text-right">
+                    <a href="#">Top</a>
+                </div>
+            </div>
             
             <table class="table">
                 <thead>
