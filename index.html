@@ -28,10 +28,20 @@
             </label>
         </div>
         <h5>Tags:</h5>
-        <div class="form-group">
-            <label for="tagSearch">Search</label>
-            <input type="email" class="form-control" id="tagSearch" v-model="tagSearch" placeholder="tag">
-        </div>
+        <form>
+            <div class="form-group row">
+                <label for="tagSearch" class="col-sm-1 col-form-label">Search</label>
+                <div class="col-sm-11">
+                    <input type="email" class="form-control" id="tagSearch" v-model="tagSearch" placeholder="tag">
+                </div>
+            </div>
+            <div class="form-group row">
+                <label for="tagNegSearch" class="col-sm-1 col-form-label">Negative Search</label>
+                <div class="col-sm-11">
+                    <input type="email" class="form-control" id="tagNegSearch" v-model="tagNegSearch" placeholder="tag">
+                </div>
+            </div>
+        </form>
         <h3>Days: <div v-for="day in events" style="display:inline;"><a  v-bind:href="'#' + day.day">{{day.day}}</a>&nbsp;&nbsp;</div></h3>
 
         <h3>Full Agenda</h3>
@@ -159,7 +169,8 @@
                 allEvents: eventsData,
                 onlyFav: false,
                 tags: tags,
-                tagSearch: ""
+                tagSearch: "",
+                tagNegSearch: ""
             },
             methods: {
                 downloadFavorites: () => {
@@ -187,6 +198,9 @@
                     }
                     if (this.tagSearch != "") {
                         eventFilter = appendFilter(eventFilter, event => event.tags.includes(this.tagSearch));
+                    }
+                    if (this.tagNegSearch != "") {
+                        eventFilter = appendFilter(eventFilter, event => !event.tags.includes(this.tagNegSearch));
                     }
                     let mappedEvents = _.map(eventsData, (eventsDay, idx, list) => {
                         return {
